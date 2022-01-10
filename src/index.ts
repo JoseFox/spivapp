@@ -7,6 +7,14 @@ import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
+import { UserResolver } from "./resolvers/user";
+import redis from "redis";
+import session from "express-session";
+import connectRedis from "connect-redis";
+import { MyContext } from "./types";
+import https from "https";
+import fs from "fs";
+import path from "path";
 
 const main = async () => {
   const orm = await MikroORM.init(microConfig);
@@ -14,18 +22,54 @@ const main = async () => {
 
   const app = express();
 
+  const RedisStore = connectRedis(session);
+  const redisClient = redis.createClient({ auth_pass: "admin" });
+
+  app.use(
+    session({
+      name: "qid",
+      store: new RedisStore({
+        client: redisClient,
+        disableTouch: true,
+      }),
+      cookie: {
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+        sameSite: "none",
+        secure: true,
+      },
+      saveUninitialized: false,
+      secret: "keyboard cat",
+      resave: false,
+    })
+  );
+
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [HelloResolver, PostResolver],
+      resolvers: [HelloResolver, PostResolver, UserResolver],
       validate: false,
     }),
-    context: () => ({ em: orm.em }),
+    context: ({ req, res }): MyContext => ({ em: orm.em, req, res }),
   });
 
   await apolloServer.start();
-  apolloServer.applyMiddleware({ app });
 
-  app.listen(4000, () => {
+  apolloServer.applyMiddleware({
+    app,
+    cors: {
+      origin: "https://studio.apollographql.com",
+      credentials: true,
+    },
+  });
+
+  const manualServer = https.createServer(
+    {
+      key: fs.readFileSync(path.join(__dirname, "../local-ssl/key.pem")),
+      cert: fs.readFileSync(path.join(__dirname, "../local-ssl/cert.pem")),
+    },
+    app
+  );
+
+  manualServer.listen(443, () => {
     console.log("server started on localhost:4000");
   });
 };
