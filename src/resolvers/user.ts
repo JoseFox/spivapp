@@ -53,6 +53,28 @@ export class UserResolver {
     @Arg("options") options: UsernamePasswordInput,
     @Ctx() { em }: MyContext
   ): Promise<UserResponse> {
+    if (options.username.length <= 2) {
+      return {
+        errors: [
+          {
+            field: "username",
+            message: "username must be more than 2 characters long",
+          },
+        ],
+      };
+    }
+
+    if (options.password.length <= 2) {
+      return {
+        errors: [
+          {
+            field: "password",
+            message: "password must be more than 2 characters long",
+          },
+        ],
+      };
+    }
+
     const hashedPassword = await argon2.hash(options.password);
     const user = em.create(User, {
       username: options.username,
@@ -63,7 +85,7 @@ export class UserResolver {
     } catch (error) {
       if (error.code === "23505") {
         return {
-          errors: [{ field: "user", message: "username already exists" }],
+          errors: [{ field: "username", message: "username already exists" }],
         };
       }
     }

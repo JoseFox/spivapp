@@ -1,20 +1,18 @@
 import "reflect-metadata";
 import { MikroORM } from "@mikro-orm/core";
-import { __prod__ } from "./constants";
-import microConfig from "./mikro-orm.config";
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
-import { HelloResolver } from "./resolvers/hello";
-import { PostResolver } from "./resolvers/post";
-import { UserResolver } from "./resolvers/user";
 import redis from "redis";
 import session from "express-session";
 import connectRedis from "connect-redis";
+import cors from "cors";
+import { __prod__ } from "./constants";
+import microConfig from "./mikro-orm.config";
+import { HelloResolver } from "./resolvers/hello";
+import { PostResolver } from "./resolvers/post";
+import { UserResolver } from "./resolvers/user";
 import { MyContext } from "./types";
-import https from "https";
-import fs from "fs";
-import path from "path";
 
 const main = async () => {
   const orm = await MikroORM.init(microConfig);
@@ -24,6 +22,13 @@ const main = async () => {
 
   const RedisStore = connectRedis(session);
   const redisClient = redis.createClient({ auth_pass: "admin" });
+
+  app.use(
+    cors({
+      origin: ["http://localhost:3000", "https://studio.apollographql.com"],
+      credentials: true,
+    })
+  );
 
   app.use(
     session({
@@ -55,21 +60,10 @@ const main = async () => {
 
   apolloServer.applyMiddleware({
     app,
-    cors: {
-      origin: "https://studio.apollographql.com",
-      credentials: true,
-    },
+    cors: false,
   });
 
-  const manualServer = https.createServer(
-    {
-      key: fs.readFileSync(path.join(__dirname, "../local-ssl/key.pem")),
-      cert: fs.readFileSync(path.join(__dirname, "../local-ssl/cert.pem")),
-    },
-    app
-  );
-
-  manualServer.listen(443, () => {
+  app.listen(4000, () => {
     console.log("server started on localhost:4000");
   });
 };
