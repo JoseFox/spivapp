@@ -124,4 +124,18 @@ export class UserResolver {
 
     return { user };
   }
+
+  @Mutation(() => Boolean)
+  logout(@Ctx() { req, res }: MyContext) {
+    return new Promise((resolve) => {
+      res.clearCookie("qid");
+      req.session.destroy((err) => {
+        if (err) {
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      });
+    });
+  }
 }

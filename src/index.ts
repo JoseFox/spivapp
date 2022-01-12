@@ -39,8 +39,8 @@ const main = async () => {
       }),
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 7,
-        sameSite: "none",
-        secure: true,
+        sameSite: "lax",
+        secure: false,
       },
       saveUninitialized: false,
       secret: "keyboard cat",
